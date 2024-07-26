@@ -1188,15 +1188,26 @@ struct _BPlistEncodingFormat : PlistEncodingFormat {
        
     mutating func number<T: FixedWidthInteger>(from num: T) -> Reference {
         let backing: Reference.Backing
-        if T.bitWidth < 64 || T.bitWidth == 64 && T.isSigned {
-            backing = .shorterOrSignedInteger(Int64(num))
-        } else if T.bitWidth == 64 /* UInt64 */ {
+        if T.self == UInt64.self {
             backing = .uint64(UInt64(num))
+        } else if let asInt64 = Int64(exactly: num) {
+            backing = .shorterOrSignedInteger(asInt64)
         } else {
-            let str = num.description
-            backing = .string(str, hash: str.hashValue, isASCII: true)
+            if false {
+                let str = String(num, radix: 16)
+                backing = .string(str, hash: str.hashValue, isASCII: true)
+            } else {
+                let bits = T.bitWidth - num.magnitude.leadingZeroBitCount
+                let bytes = (bits+7) / 8
+                var data = Data(count: 1 + bytes)
+                for i in 0 ..< bytes {
+                    data[i] = UInt8(truncatingIfNeeded: num &>> (8*i))
+                }
+                // last byte is sign extension
+                data[bytes] = num < 0 ? 0xff : 0x00
+                backing = .data(data)
+            }
         }
-        
         return unique(backing)
     }
     

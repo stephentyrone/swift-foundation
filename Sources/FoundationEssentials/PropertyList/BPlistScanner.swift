@@ -219,14 +219,47 @@ extension BPlistMap.Value {
             }
         case let .string(region, ascii):
             guard ascii else {
-                throw DecodingError._dataCorrupted("Parsed property list number is not in ASCII.", for: codingPathNode, additionalKey)
+                throw DecodingError._dataCorrupted("Parsed property list number is not ASCII.", for: codingPathNode, additionalKey)
             }
             return try map.withBuffer(for: region) { buffer, _ in
                 guard let string = String(data: Data(bufferView: buffer), encoding: .ascii) else {
                     throw DecodingError._dataCorrupted("Failed to construct string from specified region.", for: codingPathNode, additionalKey)
                 }
-                if let value = T(string) { return value }
+                if let value = T(string, radix: 16) { return value }
                 throw DecodingError._dataCorrupted("Parsed property list number <\(string)> does not fit in \(type).", for: codingPathNode, additionalKey)
+            }
+        case let .data(region):
+            return try map.withBuffer(for: region) { buffer, _ in
+                let count = (buffer.count - 1)
+                if count > T.bitWidth/8 {
+                    throw DecodingError._dataCorrupted("Parsed property list number does not fit in \(type).", for: codingPathNode, additionalKey)
+                }
+                var result: T = 0
+                for i in 0 ..< count {
+                    result |= T(truncatingIfNeeded: buffer[uncheckedOffset: i]) &<< (8*i)
+                }
+                // Check that our sign byte is the sign-extension of the last value byte
+                if count == 0 {
+                    throw DecodingError._dataCorrupted("Zero encoded with negative sign extension.", for: codingPathNode, additionalKey)
+                } else if T.isSigned {
+                    // If we're decoding a signed value, the sign extension has to match
+                    // the high-order bit.
+                    guard (buffer[uncheckedOffset: count] == 0xff) == (buffer[uncheckedOffset: count-1] >= 128) else {
+                        throw DecodingError._dataCorrupted("Parsed property list number does not fit in \(type).", for: codingPathNode, additionalKey)
+                    }
+                } else {
+                    // If we're decoding an unsigned value, the sign extension
+                    // must be zero.
+                    guard buffer[uncheckedOffset: count] == 0x00 else {
+                        throw DecodingError._dataCorrupted("Parsed property list number does not fit in \(type).", for: codingPathNode, additionalKey)
+                    }
+                }
+                // sign-extend the bytes we've written into result if we haven't filled
+                // it yet.
+                for i in count ..< T.bitWidth/8 {
+                    result |= T(truncatingIfNeeded: buffer[uncheckedOffset: count]) &<< (8*i)
+                }
+                return result
             }
         default:
             throw DecodingError._typeMismatch(at: codingPathNode.path(byAppending: additionalKey), expectation: type, reality: self)
