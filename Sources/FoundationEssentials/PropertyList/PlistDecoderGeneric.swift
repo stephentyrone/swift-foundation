@@ -225,6 +225,11 @@ extension _PlistDecoder : SingleValueDecodingContainer {
     public func decode(_ type: Int64.Type) throws -> Int64 {
         try unwrapFixedWidthInteger(from: storage.topContainer, for: codingPathNode)
     }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func decode(_ type: Int128.Type) throws -> Int128 {
+        try unwrapFixedWidthInteger(from: storage.topContainer, for: codingPathNode)
+    }
 
     public func decode(_ type: UInt.Type) throws -> UInt {
         try unwrapFixedWidthInteger(from: storage.topContainer, for: codingPathNode)
@@ -243,6 +248,11 @@ extension _PlistDecoder : SingleValueDecodingContainer {
     }
 
     public func decode(_ type: UInt64.Type) throws -> UInt64 {
+        try unwrapFixedWidthInteger(from: storage.topContainer, for: codingPathNode)
+    }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func decode(_ type: UInt128.Type) throws -> UInt128 {
         try unwrapFixedWidthInteger(from: storage.topContainer, for: codingPathNode)
     }
 
@@ -372,6 +382,11 @@ internal struct _PlistKeyedDecodingContainer<Key : CodingKey, Format: PlistDecod
     func decode(_ type: Int64.Type, forKey key: Key) throws -> Int64 {
         try decodeFixedWidthInteger(key: key)
     }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func decode(_ type: Int128.Type, forKey key: Key) throws -> Int128 {
+        try decodeFixedWidthInteger(key: key)
+    }
 
     func decode(_ type: UInt.Type, forKey key: Key) throws -> UInt {
         try decodeFixedWidthInteger(key: key)
@@ -390,6 +405,11 @@ internal struct _PlistKeyedDecodingContainer<Key : CodingKey, Format: PlistDecod
     }
 
     func decode(_ type: UInt64.Type, forKey key: Key) throws -> UInt64 {
+        try decodeFixedWidthInteger(key: key)
+    }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func decode(_ type: UInt128.Type, forKey key: Key) throws -> UInt128 {
         try decodeFixedWidthInteger(key: key)
     }
 
@@ -596,6 +616,11 @@ struct _PlistUnkeyedDecodingContainer<Format : PlistDecodingFormat> : UnkeyedDec
     mutating func decode(_: Int64.Type) throws -> Int64 {
         try decodeFixedWidthInteger()
     }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func decode(_: Int128.Type) throws -> Int128 {
+        try decodeFixedWidthInteger()
+    }
 
     mutating func decode(_: UInt.Type) throws -> UInt {
         try decodeFixedWidthInteger()
@@ -614,6 +639,11 @@ struct _PlistUnkeyedDecodingContainer<Format : PlistDecodingFormat> : UnkeyedDec
     }
 
     mutating func decode(_: UInt64.Type) throws -> UInt64 {
+        try decodeFixedWidthInteger()
+    }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func decode(_: UInt128.Type) throws -> UInt128 {
         try decodeFixedWidthInteger()
     }
 

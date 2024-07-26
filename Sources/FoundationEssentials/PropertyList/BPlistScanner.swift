@@ -202,31 +202,35 @@ extension BPlistMap.Value {
         }
     }
 
-    func integerValue<T: BinaryInteger>(in map: BPlistMap, as type: T.Type, for codingPathNode: _CodingPathNode, _ additionalKey: (some CodingKey)? = _CodingKey?.none) throws -> T {
-        if case .real = self {
+    func integerValue<T: FixedWidthInteger>(in map: BPlistMap, as type: T.Type, for codingPathNode: _CodingPathNode, _ additionalKey: (some CodingKey)? = _CodingKey?.none) throws -> T {
+        switch self {
+        case .real:
             let double = try self.realValue(in: map, as: Double.self, for: codingPathNode, additionalKey)
-            guard let integer = T(exactly: double) else {
-                throw DecodingError._dataCorrupted("Property list number <\(double)> does not fit in \(type).", for: codingPathNode, additionalKey)
+            if let integer = T(exactly: double) { return integer }
+            throw DecodingError._dataCorrupted("Property list number <\(double)> does not fit in \(type).", for: codingPathNode, additionalKey)
+        case let .integer(u64, signed):
+            if !signed {
+                if let value = T(exactly: u64) { return value }
+                throw DecodingError._dataCorrupted("Parsed property list number <\(u64)> does not fit in \(type).", for: codingPathNode, additionalKey)
+            } else {
+                let s64 = Int64(bitPattern: u64)
+                if let value = T(exactly: s64) { return value }
+                throw DecodingError._dataCorrupted("Parsed property list number <\(s64)> does not fit in \(type).", for: codingPathNode, additionalKey)
             }
-            return integer
-        }
-
-        guard case let .integer(uint64BitPattern, useSignedRep) = self else {
+        case let .string(region, ascii):
+            guard ascii else {
+                throw DecodingError._dataCorrupted("Parsed property list number is not in ASCII.", for: codingPathNode, additionalKey)
+            }
+            return try map.withBuffer(for: region) { buffer, _ in
+                guard let string = String(data: Data(bufferView: buffer), encoding: .ascii) else {
+                    throw DecodingError._dataCorrupted("Failed to construct string from specified region.", for: codingPathNode, additionalKey)
+                }
+                if let value = T(string) { return value }
+                throw DecodingError._dataCorrupted("Parsed property list number <\(string)> does not fit in \(type).", for: codingPathNode, additionalKey)
+            }
+        default:
             throw DecodingError._typeMismatch(at: codingPathNode.path(byAppending: additionalKey), expectation: type, reality: self)
         }
-
-        if !useSignedRep {
-            guard let val = T(exactly: uint64BitPattern) else {
-                throw DecodingError._dataCorrupted("Parsed property list number <\(uint64BitPattern)> does not fit in \(type).", for: codingPathNode, additionalKey)
-            }
-            return val
-        }
-
-        let numAsSint = Int64(bitPattern: uint64BitPattern)
-        guard let val = T(exactly: numAsSint) else {
-            throw DecodingError._dataCorrupted("Parsed property list number <\(numAsSint)> does not fit in \(type).", for: codingPathNode, additionalKey)
-        }
-        return val
     }
 
     func realValue<T: BinaryFloatingPoint>(in map: BPlistMap, as type: T.Type, for codingPathNode: _CodingPathNode, _ additionalKey: (some CodingKey)? = _CodingKey?.none) throws -> T {

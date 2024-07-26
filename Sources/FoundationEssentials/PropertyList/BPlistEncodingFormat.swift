@@ -229,6 +229,10 @@ private struct _PlistKeyedEncodingContainerBPlist<K : CodingKey> : KeyedEncoding
     mutating func encode(_ value: Int64, forKey key: Key) throws {
         self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
     }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func encode(_ value: Int128, forKey key: Key) throws {
+        self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
+    }
     mutating func encode(_ value: UInt, forKey key: Key) throws {
         self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
     }
@@ -242,6 +246,10 @@ private struct _PlistKeyedEncodingContainerBPlist<K : CodingKey> : KeyedEncoding
         self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
     }
     mutating func encode(_ value: UInt64, forKey key: Key) throws {
+        self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
+    }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func encode(_ value: UInt128, forKey key: Key) throws {
         self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
     }
     mutating func encode(_ value: String, forKey key: Key) throws {
@@ -341,11 +349,15 @@ private struct _PlistUnkeyedEncodingContainerBPlist : UnkeyedEncodingContainer {
     mutating func encode(_ value: Int16)  throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: Int32)  throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: Int64)  throws { self.reference.insert(self.encoder.wrap(value)) }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func encode(_ value: Int128) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt)   throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt8)  throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt16) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt32) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt64) throws { self.reference.insert(self.encoder.wrap(value)) }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func encode(_ value: UInt128) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: Float)  throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: Double) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: String) throws { self.reference.insert(self.encoder.wrap(value)) }
@@ -416,6 +428,12 @@ extension __PlistEncoderBPlist : SingleValueEncodingContainer {
         assertCanEncodeNewValue()
         self.storage.push(reference: wrap(value))
     }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func encode(_ value: Int128) throws {
+        assertCanEncodeNewValue()
+        self.storage.push(reference: wrap(value))
+    }
 
     public func encode(_ value: UInt) throws {
         assertCanEncodeNewValue()
@@ -438,6 +456,12 @@ extension __PlistEncoderBPlist : SingleValueEncodingContainer {
     }
 
     public func encode(_ value: UInt64) throws {
+        assertCanEncodeNewValue()
+        self.storage.push(reference: wrap(value))
+    }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func encode(_ value: UInt128) throws {
         assertCanEncodeNewValue()
         self.storage.push(reference: wrap(value))
     }
@@ -474,11 +498,15 @@ extension __PlistEncoderBPlist {
     @inline(__always) internal func wrap(_ value: Int16)  -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: Int32)  -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: Int64)  -> _BPlistEncodingFormat.Reference { format.number(from: value) }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    @inline(__always) internal func wrap(_ value: Int128) -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt)   -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt8)  -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt16) -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt32) -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt64) -> _BPlistEncodingFormat.Reference { format.number(from: value) }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    @inline(__always) internal func wrap(_ value: UInt128) -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: Float)  -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: Double) -> _BPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: String) -> _BPlistEncodingFormat.Reference { format.string(value) }
@@ -1160,10 +1188,13 @@ struct _BPlistEncodingFormat : PlistEncodingFormat {
        
     mutating func number<T: FixedWidthInteger>(from num: T) -> Reference {
         let backing: Reference.Backing
-        if T.isSigned || T.bitWidth < UInt64.bitWidth {
+        if T.bitWidth < 64 || T.bitWidth == 64 && T.isSigned {
             backing = .shorterOrSignedInteger(Int64(num))
-        } else {
+        } else if T.bitWidth == 64 /* UInt64 */ {
             backing = .uint64(UInt64(num))
+        } else {
+            let str = num.description
+            backing = .string(str, hash: str.hashValue, isASCII: true)
         }
         
         return unique(backing)

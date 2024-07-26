@@ -215,6 +215,10 @@ private struct _PlistKeyedEncodingContainerXML<K : CodingKey> : KeyedEncodingCon
     mutating func encode(_ value: Int64, forKey key: Key) throws {
         self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
     }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func encode(_ value: Int128, forKey key: Key) throws {
+        self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
+    }
     mutating func encode(_ value: UInt, forKey key: Key) throws {
         self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
     }
@@ -228,6 +232,10 @@ private struct _PlistKeyedEncodingContainerXML<K : CodingKey> : KeyedEncodingCon
         self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
     }
     mutating func encode(_ value: UInt64, forKey key: Key) throws {
+        self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
+    }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func encode(_ value: UInt128, forKey key: Key) throws {
         self.reference.insert(encoder.wrap(value), for: encoder.wrap(key.stringValue))
     }
     mutating func encode(_ value: String, forKey key: Key) throws {
@@ -327,11 +335,15 @@ private struct _PlistUnkeyedEncodingContainerXML : UnkeyedEncodingContainer {
     mutating func encode(_ value: Int16)  throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: Int32)  throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: Int64)  throws { self.reference.insert(self.encoder.wrap(value)) }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func encode(_ value: Int128) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt)   throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt8)  throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt16) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt32) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: UInt64) throws { self.reference.insert(self.encoder.wrap(value)) }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func encode(_ value: UInt128) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: Float)  throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: Double) throws { self.reference.insert(self.encoder.wrap(value)) }
     mutating func encode(_ value: String) throws { self.reference.insert(self.encoder.wrap(value)) }
@@ -402,6 +414,12 @@ extension __PlistEncoderXML : SingleValueEncodingContainer {
         assertCanEncodeNewValue()
         self.storage.push(reference: wrap(value))
     }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func encode(_ value: Int128) throws {
+        assertCanEncodeNewValue()
+        self.storage.push(reference: wrap(value))
+    }
 
     public func encode(_ value: UInt) throws {
         assertCanEncodeNewValue()
@@ -424,6 +442,12 @@ extension __PlistEncoderXML : SingleValueEncodingContainer {
     }
 
     public func encode(_ value: UInt64) throws {
+        assertCanEncodeNewValue()
+        self.storage.push(reference: wrap(value))
+    }
+    
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func encode(_ value: UInt128) throws {
         assertCanEncodeNewValue()
         self.storage.push(reference: wrap(value))
     }
@@ -460,11 +484,15 @@ extension __PlistEncoderXML {
     @inline(__always) internal func wrap(_ value: Int16)  -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: Int32)  -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: Int64)  -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    @inline(__always) internal func wrap(_ value: Int128)  -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt)   -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt8)  -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt16) -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt32) -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: UInt64) -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    @inline(__always) internal func wrap(_ value: UInt128)  -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: Float)  -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: Double) -> _XMLPlistEncodingFormat.Reference { format.number(from: value) }
     @inline(__always) internal func wrap(_ value: String) -> _XMLPlistEncodingFormat.Reference { format.string(value) }
@@ -592,7 +620,6 @@ private class __PlistReferencingEncoderXML : __PlistEncoderXML {
 }
 
 // MARK: - Format
-
 struct _XMLPlistEncodingFormat : PlistEncodingFormat {
     enum Reference: PlistEncodingReference {
         
@@ -607,8 +634,7 @@ struct _XMLPlistEncodingFormat : PlistEncodingFormat {
         case string(String)
         
         // All integers have the same method of generating their XML plist representation. By promoting them all to 64 bits, we don't have to keep track of their specific integer type, which isn't critical to the generation of their XML format.
-        case unsignedInteger(UInt64)
-        case signedInteger(Int64)
+        case integer(String)
         
         // Floats have historically been coerced to Doubles during encoding.
         case floatingPoint(Double)
@@ -680,7 +706,7 @@ struct _XMLPlistEncodingFormat : PlistEncodingFormat {
         
         var isNumber: Bool {
             switch self {
-            case .floatingPoint, .unsignedInteger, .signedInteger:
+            case .floatingPoint, .integer:
                 return true
             default:
                 return false
@@ -798,13 +824,9 @@ struct _XMLPlistEncodingFormat : PlistEncodingFormat {
                 appendOpen(.real)
                 append(realDescription(val))
                 appendClose(.real)
-            case let .signedInteger(val):
+            case let .integer(string):
                 appendOpen(.integer)
-                append(val.description)
-                appendClose(.integer)
-            case let .unsignedInteger(val):
-                appendOpen(.integer)
-                append(val.description)
+                append(string)
                 appendClose(.integer)
             case .true:
                 appendEmpty(.true)
@@ -1066,11 +1088,7 @@ struct _XMLPlistEncodingFormat : PlistEncodingFormat {
     }
     
     func number<T: FixedWidthInteger>(from num: T) -> Reference {
-        if T.isSigned {
-            return .signedInteger(Int64(num))
-        } else {
-            return .unsignedInteger(UInt64(num))
-        }
+        .integer(num.description)
     }
     
     func number<T: BinaryFloatingPoint>(from num: T) -> Reference {

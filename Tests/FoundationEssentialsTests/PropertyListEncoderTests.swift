@@ -689,7 +689,6 @@ class TestPropertyListEncoder : XCTestCase {
             let data = badPlist.data(using: String._Encoding.utf8)!
             XCTAssertThrowsError(try PropertyListDecoder().decode(GenericProperties.self, from: data), "Case \(name) did not fail as expected")
         }
-
     }
 
     func test_6164184() throws {
@@ -699,60 +698,60 @@ class TestPropertyListEncoder : XCTestCase {
     }
 
     func test_xmlIntegerEdgeCases() throws {
-        func checkValidEdgeCase<T: Decodable & Equatable>(_ xml: String, type: T.Type, expected: T) throws {
-            let value = try PropertyListDecoder().decode(type, from: xml.data(using: String._Encoding.utf8)!)
-            XCTAssertEqual(value, expected)
+        let decoder = PropertyListDecoder()
+        func hex<T: FixedWidthInteger>(_ value: T) -> String {
+            (value < 0 ? "-0x" : "0x") + String(value.magnitude, radix: 16)
         }
-
-        try checkValidEdgeCase("<integer>127</integer>", type: Int8.self, expected: .max)
-        try checkValidEdgeCase("<integer>-128</integer>", type: Int8.self, expected: .min)
-        try checkValidEdgeCase("<integer>32767</integer>", type: Int16.self, expected: .max)
-        try checkValidEdgeCase("<integer>-32768</integer>", type: Int16.self, expected: .min)
-        try checkValidEdgeCase("<integer>2147483647</integer>", type: Int32.self, expected: .max)
-        try checkValidEdgeCase("<integer>-2147483648</integer>", type: Int32.self, expected: .min)
-        try checkValidEdgeCase("<integer>9223372036854775807</integer>", type: Int64.self, expected: .max)
-        try checkValidEdgeCase("<integer>-9223372036854775808</integer>", type: Int64.self, expected: .min)
-
-        try checkValidEdgeCase("<integer>0x7f</integer>", type: Int8.self, expected: .max)
-        try checkValidEdgeCase("<integer>-0x80</integer>", type: Int8.self, expected: .min)
-        try checkValidEdgeCase("<integer>0x7fff</integer>", type: Int16.self, expected: .max)
-        try checkValidEdgeCase("<integer>-0x8000</integer>", type: Int16.self, expected: .min)
-        try checkValidEdgeCase("<integer>0x7fffffff</integer>", type: Int32.self, expected: .max)
-        try checkValidEdgeCase("<integer>-0x80000000</integer>", type: Int32.self, expected: .min)
-        try checkValidEdgeCase("<integer>0x7fffffffffffffff</integer>", type: Int64.self, expected: .max)
-        try checkValidEdgeCase("<integer>-0x8000000000000000</integer>", type: Int64.self, expected: .min)
-
-        try checkValidEdgeCase("<integer>255</integer>", type: UInt8.self, expected: .max)
-        try checkValidEdgeCase("<integer>65535</integer>", type: UInt16.self, expected: .max)
-        try checkValidEdgeCase("<integer>4294967295</integer>", type: UInt32.self, expected: .max)
-        try checkValidEdgeCase("<integer>18446744073709551615</integer>", type: UInt64.self, expected: .max)
-
-        func checkInvalidEdgeCase<T: Decodable>(_ xml: String, type: T.Type) {
-            XCTAssertThrowsError(try PropertyListDecoder().decode(type, from: xml.data(using: String._Encoding.utf8)!))
+        func checkEdgeCases<T: FixedWidthInteger & Codable>(type: T.Type) throws {
+            func checkValid(_ value: T) throws {
+                _testRoundTrip(of: [value], in: .xml)
+                let dec = "<integer>\(value)</integer>"
+                XCTAssertEqual(value, try decoder.decode(T.self, from: dec.data(using: .utf8)!))
+                let hex = "<integer>" + hex(value) + "</integer>"
+                XCTAssertEqual(value, try decoder.decode(T.self, from: hex.data(using: .utf8)!))
+            }
+            try checkValid(.min)
+            try checkValid(.zero)
+            try checkValid(1)
+            try checkValid(.max)
+            if T.isSigned {
+                let upDec = "<integer>\(T.min.magnitude)</integer>"
+                XCTAssertThrowsError(try decoder.decode(T.self, from: upDec.data(using: .utf8)!))
+                let upHex = "<integer>" + hex(T.min.magnitude) + "</integer>"
+                XCTAssertThrowsError(try decoder.decode(T.self, from: upHex.data(using: .utf8)!))
+                // 2ⁿ always ends in 8 for n == 3 mod 4 (all signed integer
+                // types we care about, so change the 8 to a 9 to get one-past
+                // min
+                let dnDec = "<integer>" + String(T.min).dropLast(1) + "9</integer>"
+                XCTAssertThrowsError(try decoder.decode(T.self, from: dnDec.data(using: .utf8)!))
+                // Similarly, replace 0 with 1 to get one-past in hex.
+                let dnHex = "<integer>" + hex(T.min).dropLast(1) + "1</integer>"
+                XCTAssertThrowsError(try decoder.decode(T.self, from: dnHex.data(using: .utf8)!))
+            } else {
+                // Same basic scheme as signed, except that we just build the
+                // hex string directly; all unsigned max values end in 5 in
+                // decimal, replacing with 6 gives us one-past.
+                let upDec = "<integer>" + String(T.max).dropLast(1) + "6</integer>"
+                XCTAssertThrowsError(try decoder.decode(T.self, from: upDec.data(using: .utf8)!))
+                let upHex = "<integer>0x1" + String(repeating: "0", count: T.bitWidth/4) + "</integer>"
+                XCTAssertThrowsError(try decoder.decode(T.self, from: upHex.data(using: .utf8)!))
+                XCTAssertThrowsError(try decoder.decode(T.self, from: "<integer>-1</integer>".data(using: .utf8)!))
+                XCTAssertThrowsError(try decoder.decode(T.self, from: "<integer>-0x1</integer>".data(using: .utf8)!))
+            }
         }
-
-        checkInvalidEdgeCase("<integer>128</integer>", type: Int8.self)
-        checkInvalidEdgeCase("<integer>-129</integer>", type: Int8.self)
-        checkInvalidEdgeCase("<integer>32768</integer>", type: Int16.self)
-        checkInvalidEdgeCase("<integer>-32769</integer>", type: Int16.self)
-        checkInvalidEdgeCase("<integer>2147483648</integer>", type: Int32.self)
-        checkInvalidEdgeCase("<integer>-2147483649</integer>", type: Int32.self)
-        checkInvalidEdgeCase("<integer>9223372036854775808</integer>", type: Int64.self)
-        checkInvalidEdgeCase("<integer>-9223372036854775809</integer>", type: Int64.self)
-
-        checkInvalidEdgeCase("<integer>0x80</integer>", type: Int8.self)
-        checkInvalidEdgeCase("<integer>-0x81</integer>", type: Int8.self)
-        checkInvalidEdgeCase("<integer>0x8000</integer>", type: Int16.self)
-        checkInvalidEdgeCase("<integer>-0x8001</integer>", type: Int16.self)
-        checkInvalidEdgeCase("<integer>0x80000000</integer>", type: Int32.self)
-        checkInvalidEdgeCase("<integer>-0x80000001</integer>", type: Int32.self)
-        checkInvalidEdgeCase("<integer>0x8000000000000000</integer>", type: Int64.self)
-        checkInvalidEdgeCase("<integer>-0x8000000000000001</integer>", type: Int64.self)
-
-        checkInvalidEdgeCase("<integer>256</integer>", type: UInt8.self)
-        checkInvalidEdgeCase("<integer>65536</integer>", type: UInt16.self)
-        checkInvalidEdgeCase("<integer>4294967296</integer>", type: UInt32.self)
-        checkInvalidEdgeCase("<integer>18446744073709551616</integer>", type: UInt64.self)
+        
+        try checkEdgeCases(type: Int8.self)
+        try checkEdgeCases(type: UInt8.self)
+        try checkEdgeCases(type: Int16.self)
+        try checkEdgeCases(type: UInt16.self)
+        try checkEdgeCases(type: Int32.self)
+        try checkEdgeCases(type: UInt32.self)
+        try checkEdgeCases(type: Int64.self)
+        try checkEdgeCases(type: UInt64.self)
+        if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
+            try checkEdgeCases(type: Int128.self)
+            try checkEdgeCases(type: UInt128.self)
+        }
     }
     
     func test_xmlIntegerWhitespace() throws {
@@ -770,12 +769,18 @@ class TestPropertyListEncoder : XCTestCase {
         _testRoundTrip(of: [Int32.max], in: .binary)
         _testRoundTrip(of: [Int32.min], in: .binary)
         _testRoundTrip(of: [Int64.max], in: .binary)
-        _testRoundTrip(of: [Int64.max], in: .binary)
+        _testRoundTrip(of: [Int64.min], in: .binary)
 
         _testRoundTrip(of: [UInt8.max], in: .binary)
         _testRoundTrip(of: [UInt16.max], in: .binary)
         _testRoundTrip(of: [UInt32.max], in: .binary)
         _testRoundTrip(of: [UInt64.max], in: .binary)
+        
+        if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
+            _testRoundTrip(of: [Int128.max], in: .binary)
+            _testRoundTrip(of: [Int128.min], in: .binary)
+            _testRoundTrip(of: [UInt128.max], in: .binary)
+        }
 
         _testRoundTrip(of: [Float.greatestFiniteMagnitude], in: .binary)
         _testRoundTrip(of: [-Float.greatestFiniteMagnitude], in: .binary)
